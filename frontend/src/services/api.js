@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { collection, addDoc, getDocs, getDoc, doc, query, where, Timestamp } from 'firebase/firestore';
+import { db, auth } from './firebase';
 
 const api = axios.create({
     baseURL: '/api',
@@ -7,100 +9,130 @@ const api = axios.create({
     },
 });
 
-// Request interceptor to add token
-api.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            config.headers['Authorization'] = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => Promise.reject(error)
-);
+// Helper to determine if a URL matches a mock path
+const matchMock = (url, endpoint) => {
+    return url === endpoint || url === `/api${endpoint}` || url.endsWith(endpoint);
+};
 
-// Mock Adapter using interceptors for response
 api.interceptors.response.use(
-    (response) => response,
-    async (error) => {
-        // Mock logic
-        const { config } = error;
-
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Mock Login
-        if (config.url === '/auth/login' && config.method === 'post') {
-            const { email, password } = JSON.parse(config.data);
-            if (email === 'test@risklens.com' && password === 'password123') {
-                return {
-                    data: {
-                        token: 'mock-jwt-token-123456',
-                        user: { name: 'Demo User', email: 'test@risklens.com' }
+    async (response) => {
+        const { config } = response;
+        const mockResponse = await getMockResponse(config);
+        if (mockResponse) {
+            if (mockResponse.error) {
+                return Promise.reject({
+                    response: {
+                        status: mockResponse.status || 400,
+                        data: mockResponse.data
                     }
-                };
+                });
             }
-            return Promise.reject({ response: { status: 401, data: { message: 'Invalid credentials' } } });
+            return mockResponse;
         }
-
-        // Mock Register
-        if (config.url === '/auth/register' && config.method === 'post') {
-            return {
-                data: {
-                    token: 'mock-jwt-token-789012',
-                    user: JSON.parse(config.data)
+        return response;
+    },
+    async (error) => {
+        const { config } = error;
+        const mockResponse = await getMockResponse(config);
+        if (mockResponse) {
+            if (!mockResponse.error) {
+                return mockResponse;
+            }
+            return Promise.reject({
+                response: {
+                    status: mockResponse.status || 400,
+                    data: mockResponse.data
                 }
-            };
+            });
         }
-
-        // Mock Reports List
-        if (config.url === '/reports' && config.method === 'get') {
-            return {
-                data: [
-                    { id: 1, date: '2023-10-25', name: 'Chatbot Logs V1', riskScore: 85, status: 'High' },
-                    { id: 2, date: '2023-10-24', name: 'Customer Data Set', riskScore: 45, status: 'Medium' },
-                    { id: 3, date: '2023-10-20', name: 'Marketing Copy', riskScore: 12, status: 'Low' },
-                ]
-            };
-        }
-
-        // Mock Scan
-        if (config.url === '/scan' && config.method === 'post') {
-            return {
-                data: {
-                    riskScore: Math.floor(Math.random() * 100),
-                    riskLevel: 'High', // Logic could be dynamic
-                    confidence: 95,
-                    explanations: [
-                        'Sensiive PII detected in standard text fields.',
-                        'Potential data leakage in validation error messages.',
-                        'Unencrypted storage patterns found.'
-                    ]
-                }
-            };
-        }
-
-        // Mock Save Report
-        if (config.url === '/reports/save' && config.method === 'post') {
-            return { data: { success: true } };
-        }
-
-        // Mock Report Detail
-        if (config.url.match(/\/reports\/\d+/) && config.method === 'get') {
-            return {
-                data: {
-                    id: config.url.split('/').pop(),
-                    date: '2023-10-25',
-                    name: 'Detailed Analysis Report',
-                    riskScore: 78,
-                    status: 'High',
-                    details: 'Full report content here...'
-                }
-            };
-        }
-
         return Promise.reject(error);
     }
 );
+
+// Centralized Mock Logic connected to Firestore
+const getMockResponse = async (config) => {
+    if (!config) return null;
+    const { url, method } = config;
+
+    // Reports List
+    if (matchMock(url, '/reports') && method === 'get') {
+        const user = auth.currentUser;
+        if (!user) return { data: [], status: 200 };
+
+        try {
+            const q = query(collection(db, "reports"), where("userId", "==", user.uid));
+            const querySnapshot = await getDocs(q);
+            const reports = querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    date: data.createdAt ? new Date(data.createdAt.toMillis()).toISOString().split('T')[0] : 'Unknown Date',
+                    name: data.name || 'Scan Report',
+                    riskScore: data.result?.riskScore,
+                    status: data.result?.riskLevel
+                };
+            });
+            // Sort by newest by default string sorting on ISO date, or just keep as is
+            reports.sort((a, b) => new Date(b.date) - new Date(a.date));
+            return { data: reports, status: 200 };
+        } catch (err) {
+            return { error: true, status: 500, data: { message: "Failed to fetch reports" }};
+        }
+    }
+
+
+
+    // Save Report
+    if (matchMock(url, '/reports/save') && method === 'post') {
+        const user = auth.currentUser;
+        if (!user) return { error: true, status: 401, data: { message: 'Unauthorized' } };
+        
+        const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+        
+        try {
+            await addDoc(collection(db, "reports"), {
+                userId: user.uid,
+                createdAt: Timestamp.now(),
+                name: 'New Scan Report',
+                result: payload.result
+            });
+            return { data: { success: true }, status: 200 };
+        } catch (err) {
+            console.error(err);
+            return { error: true, status: 500, data: { message: "Failed to save report" }};
+        }
+    }
+
+    // Report Detail
+    if (url.match(/\/reports\/\w+/) && method === 'get') {
+        const id = url.split('/').pop();
+        try {
+            const docRef = doc(db, "reports", id);
+            const docSnap = await getDoc(docRef);
+            
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                return {
+                    data: {
+                        id: docSnap.id,
+                        date: data.createdAt ? new Date(data.createdAt.toMillis()).toISOString().split('T')[0] : 'Unknown Date',
+                        name: data.name || 'Scan Report',
+                        riskScore: data.result?.riskScore,
+                        status: data.result?.riskLevel,
+                        details: data.result?.explanations?.join('\n') || 'No details available.',
+                        result: data.result
+                    },
+                    status: 200,
+                };
+            } else {
+                return { error: true, status: 404, data: { message: "Report not found" } };
+            }
+        } catch (err) {
+            return { error: true, status: 500, data: { message: "Failed to fetch report" }};
+        }
+    }
+
+    return null;
+};
 
 export default api;

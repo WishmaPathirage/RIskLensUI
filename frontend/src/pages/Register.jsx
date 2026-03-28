@@ -56,7 +56,7 @@ const Register = () => {
         const result = await register({ name: formData.name, email: formData.email, password: formData.password });
 
         if (result.success) {
-            navigate('/dashboard');
+            navigate('/login', { state: { message: 'Registration successful! Please login.' } });
         } else {
             setErrors({ form: result.message });
             setIsSubmitting(false);

@@ -1,9 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
 import { ShieldCheck, BarChart3, FileText, ArrowRight } from 'lucide-react';
 
 const Landing = () => {
+    const { user } = useAuth();
     return (
         <div className="bg-slate-50">
             {/* Hero Section */}
@@ -17,16 +19,26 @@ const Landing = () => {
                         Secure your AI interactions with real-time privacy risk assessment. Identify sensitive data integration issues before they happen.
                     </p>
                     <div className="mt-8 flex justify-center gap-4">
-                        <Link to="/register">
-                            <Button size="lg" className="shadow-lg shadow-blue-500/20">
-                                Get Started <ArrowRight className="ml-2 h-5 w-5" />
-                            </Button>
-                        </Link>
-                        <Link to="/login">
-                            <Button variant="outline" size="lg">
-                                Login
-                            </Button>
-                        </Link>
+                        {user ? (
+                            <Link to="/dashboard">
+                                <Button size="lg" className="shadow-lg shadow-blue-500/20">
+                                    Go to Dashboard <ArrowRight className="ml-2 h-5 w-5" />
+                                </Button>
+                            </Link>
+                        ) : (
+                            <>
+                                <Link to="/register">
+                                    <Button size="lg" className="shadow-lg shadow-blue-500/20">
+                                        Get Started <ArrowRight className="ml-2 h-5 w-5" />
+                                    </Button>
+                                </Link>
+                                <Link to="/login">
+                                    <Button variant="outline" size="lg">
+                                        Login
+                                    </Button>
+                                </Link>
+                            </>
+                        )}
                     </div>
                 </div>
 

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -9,13 +9,24 @@ const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState(''); // General form error or field error
+    const [successMsg, setSuccessMsg] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { login } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+
+    useEffect(() => {
+        if (location.state?.message) {
+            setSuccessMsg(location.state.message);
+            // Clear state so message doesn't persist on refresh
+            window.history.replaceState({}, document.title);
+        }
+    }, [location]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setSuccessMsg('');
         setIsSubmitting(true);
 
         // Basic validation
@@ -46,8 +57,13 @@ const Login = () => {
                 </div>
 
                 <form className="space-y-6" onSubmit={handleSubmit}>
+                    {successMsg && (
+                        <div className="bg-green-50 text-green-700 p-3 rounded-md text-sm border border-green-200">
+                            {successMsg}
+                        </div>
+                    )}
                     {error && (
-                        <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">
+                        <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm border border-red-200">
                             {error}
                         </div>
                     )}

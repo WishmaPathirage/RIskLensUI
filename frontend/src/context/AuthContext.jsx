@@ -1,5 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import api from '../services/api';
+import { 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    signOut, 
+    onAuthStateChanged,
+    updateProfile 
+} from 'firebase/auth';
+import { auth } from '../services/firebase';
 
 const AuthContext = createContext();
 
@@ -10,43 +17,66 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            // In a real app, we would validate the token with the backend here.
-            // For mock, we'll assume it's valid if it exists and restore a dummy user.
-            setUser({ name: 'Demo User', email: 'test@risklens.com' }); // Restore user info
-        }
-        setLoading(false);
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            if (currentUser) {
+                setUser({
+                    uid: currentUser.uid,
+                    name: currentUser.displayName || 'User',
+                    email: currentUser.email
+                });
+            } else {
+                setUser(null);
+            }
+            setLoading(false);
+        });
+
+        // Cleanup subscription on unmount
+        return () => unsubscribe();
     }, []);
 
     const login = async (email, password) => {
         try {
-            const response = await api.post('/auth/login', { email, password });
-            const { token, user } = response.data;
-            localStorage.setItem('token', token);
-            setUser(user);
+            await signInWithEmailAndPassword(auth, email, password);
             return { success: true };
         } catch (error) {
             console.error("Login error", error);
-            return { success: false, message: error.response?.data?.message || 'Login failed' };
+            // Translate Firebase error codes to user-friendly messages
+            let message = 'Login failed';
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                message = 'Invalid email or password';
+            }
+            return { success: false, message };
         }
     };
 
     const register = async (userData) => {
         try {
-            const response = await api.post('/auth/register', userData);
-            const { token, user } = response.data;
-            localStorage.setItem('token', token);
-            setUser(user);
+            const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
+            
+            // Update the display name
+            await updateProfile(userCredential.user, {
+                displayName: userData.name
+            });
+            
             return { success: true };
         } catch (error) {
-            return { success: false, message: 'Registration failed' };
+            console.error("Registration error", error);
+            let message = 'Registration failed';
+            if (error.code === 'auth/email-already-in-use') {
+                message = 'Email is already registered';
+            } else if (error.code === 'auth/weak-password') {
+                message = 'Password is too weak';
+            }
+            return { success: false, message };
         }
     };
 
-    const logout = () => {
-        localStorage.removeItem('token');
-        setUser(null);
+    const logout = async () => {
+        try {
+            await signOut(auth);
+        } catch (error) {
+            console.error("Logout error", error);
+        }
     };
 
     const value = {
