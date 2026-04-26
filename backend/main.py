@@ -1,6 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional, Dict, Any
+import os
+from dotenv import load_dotenv
+import google.generativeai as genai
+
+load_dotenv()
+if os.getenv("GEMINI_API_KEY"):
+    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 from explainers import (
     hybrid_explain_with_recommendation,
     generate_lime_explanation,
@@ -56,4 +64,25 @@ async def scan_risk(request: ScanRequest):
         "topImportantWords": xai_result["top_important_words"],
         "limeFeatures": lime_features,
         "recommendations": xai_result["recommendations"]
-}
+    }
+
+class ChatRequest(BaseModel):
+    message: str
+    context: Optional[Dict[str, Any]] = None
+
+@app.post("/api/chat")
+async def chat_endpoint(request: ChatRequest):
+    if not os.getenv("GEMINI_API_KEY"):
+        return {"response": "Error: Gemini API key not configured on the server."}
+    
+    sys_prompt = "You are an intelligent privacy risk assistant for the RiskLens application. Provide clear, educational privacy advice without hallucinating strict legal mandates."
+    if request.context:
+        # Provide the scan results to Gemini to make it context-aware
+        sys_prompt += f"\n\nThe user is asking about their recent text scan. Scan Result Context: Risk Score: {request.context.get('riskScore')}/100, Entities Detected: {request.context.get('detectedEntities', [])}. Model explanation: {request.context.get('explanation')}. Use this to inform your answers gently!"
+        
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash', system_instruction=sys_prompt)
+        response = model.generate_content(request.message)
+        return {"response": response.text}
+    except Exception as e:
+        return {"response": f"Sorry, there was an error processing your request with the AI: {str(e)}"}

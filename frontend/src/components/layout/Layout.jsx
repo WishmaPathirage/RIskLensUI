@@ -1,6 +1,7 @@
 import React from 'react';
 import Navbar from './Navbar';
 import Footer from './Footer';
+import ChatBot from '../ui/ChatBot';
 
 const Layout = ({ children }) => {
     return (
@@ -10,6 +11,7 @@ const Layout = ({ children }) => {
                 {children}
             </main>
             <Footer />
+            <ChatBot variant="floating" />
         </div>
     );
 };

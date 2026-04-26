@@ -4,6 +4,7 @@ import api from '../services/api';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
+import ChatBot from '../components/ui/ChatBot';
 import { Upload, FileText, CheckCircle, AlertTriangle, XCircle, Activity, Rocket, X } from 'lucide-react';
 
 const Scan = () => {
@@ -273,6 +274,9 @@ const Scan = () => {
                                 <Button onClick={() => navigate('/')} className="w-full" variant="outline">
                                     <Activity className="mr-2 h-4 w-4" /> View in Dashboard
                                 </Button>
+
+                                {/* Embedded Contextual Chatbot */}
+                                <ChatBot variant="embedded" context={result} />
                             </Card>
                         </div>
                     ) : (
