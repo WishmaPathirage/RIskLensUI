@@ -5,7 +5,8 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import ChatBot from '../components/ui/ChatBot';
-import { Upload, FileText, CheckCircle, AlertTriangle, XCircle, Activity, Rocket, X } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertTriangle, XCircle, Activity, Rocket, X, Download, Loader2 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 
 const Scan = () => {
     const [inputType, setInputType] = useState('text'); // 'text' or 'file'
@@ -18,6 +19,26 @@ const Scan = () => {
     const [isSaving, setIsSaving] = useState(false);
     const navigate = useNavigate();
     const [showFutureWorkPopup, setShowFutureWorkPopup] = useState(false);
+    const [loadingMessageIdx, setLoadingMessageIdx] = useState(0);
+
+    const loadingMessages = [
+        "Initializing RiskLens Secure Engine...",
+        "Running DistilBERT Privacy Models...",
+        "Extracting Deep Features via LIME...",
+        "Detecting Protected PII Entities...",
+        "Finalizing Privacy Risk Score..."
+    ];
+
+    React.useEffect(() => {
+        let interval;
+        if (isAnalyzing) {
+            setLoadingMessageIdx(0);
+            interval = setInterval(() => {
+                setLoadingMessageIdx(prev => Math.min(prev + 1, loadingMessages.length - 1));
+            }, 4000);
+        }
+        return () => clearInterval(interval);
+    }, [isAnalyzing]);
 
     const handleFileChange = (e) => {
         if (e.target.files && e.target.files[0]) {
@@ -77,6 +98,56 @@ const Scan = () => {
             setError('Failed to save report.');
             setIsSaving(false);
         }
+    };
+
+    const handleDownloadReport = () => {
+        if (!result) return;
+        
+        const doc = new jsPDF();
+        let currentY = 20;
+
+        doc.setFontSize(20);
+        doc.setFont("helvetica", "bold");
+        doc.text("RiskLens Privacy Scan Report", 20, currentY);
+        currentY += 15;
+
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Date: ${new Date().toLocaleString()}`, 20, currentY); currentY += 8;
+        doc.text(`Risk Score: ${result.riskScore}/100`, 20, currentY); currentY += 8;
+        doc.text(`Risk Level: ${result.riskLevel} Risk`, 20, currentY); currentY += 8;
+        doc.text(`Model Confidence: ${result.confidence}%`, 20, currentY); currentY += 15;
+
+        doc.setFontSize(14); doc.setFont("helvetica", "bold");
+        doc.text("DETECTED ENTITIES", 20, currentY); currentY += 8;
+        doc.setFontSize(11); doc.setFont("helvetica", "normal");
+        const entitiesText = result.detectedEntities && result.detectedEntities.length > 0 ? result.detectedEntities.join(', ') : 'None';
+        const splitEntities = doc.splitTextToSize(entitiesText, 170);
+        doc.text(splitEntities, 20, currentY);
+        currentY += (splitEntities.length * 6) + 10;
+
+        doc.setFontSize(14); doc.setFont("helvetica", "bold");
+        doc.text("EXPLANATION", 20, currentY); currentY += 8;
+        doc.setFontSize(11); doc.setFont("helvetica", "normal");
+        const expText = result.explanation || 'No detailed explanation provided.';
+        const splitExp = doc.splitTextToSize(expText, 170);
+        doc.text(splitExp, 20, currentY);
+        currentY += (splitExp.length * 6) + 10;
+
+        doc.setFontSize(14); doc.setFont("helvetica", "bold");
+        doc.text("SUGGESTIONS", 20, currentY); currentY += 8;
+        doc.setFontSize(11); doc.setFont("helvetica", "normal");
+        if (result.recommendations && result.recommendations.length > 0) {
+            result.recommendations.forEach(rec => {
+                const splitRec = doc.splitTextToSize(`• ${rec}`, 170);
+                doc.text(splitRec, 20, currentY);
+                currentY += (splitRec.length * 6) + 2;
+            });
+        } else {
+            doc.text("No specific recommendations.", 20, currentY);
+        }
+
+        doc.save(`RiskLens_Report_${new Date().getTime()}.pdf`);
     };
 
     const getRiskColor = (level) => {
@@ -271,13 +342,35 @@ const Scan = () => {
                                     </div>
                                 </div>
 
-                                <Button onClick={() => navigate('/')} className="w-full" variant="outline">
-                                    <Activity className="mr-2 h-4 w-4" /> View in Dashboard
-                                </Button>
+                                <div className="flex gap-4">
+                                    <Button onClick={handleDownloadReport} className="w-1/2" variant="outline">
+                                        <Download className="mr-2 h-4 w-4" /> Download Report
+                                    </Button>
+                                    <Button onClick={() => navigate('/reports')} className="w-1/2" variant="outline">
+                                        <Activity className="mr-2 h-4 w-4" /> View in Reports
+                                    </Button>
+                                </div>
 
                                 {/* Embedded Contextual Chatbot */}
                                 <ChatBot variant="embedded" context={result} />
                             </Card>
+                        </div>
+                    ) : isAnalyzing ? (
+                        <div className="h-full flex items-center justify-center p-12 border-2 border-slate-100 bg-white rounded-xl shadow-sm">
+                            <div className="text-center space-y-6 animate-in fade-in duration-500">
+                                <div className="relative mx-auto w-20 h-20">
+                                    <div className="absolute inset-0 border-4 border-blue-100 rounded-full animate-ping opacity-75"></div>
+                                    <div className="absolute inset-0 flex items-center justify-center bg-blue-600 rounded-full shadow-lg z-10">
+                                        <Loader2 className="h-8 w-8 text-white animate-spin" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-800 mb-2">Analyzing Privacy Risk</h3>
+                                    <p className="text-sm font-medium text-blue-600 animate-pulse transition-all duration-300">
+                                        {loadingMessages[loadingMessageIdx]}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     ) : (
                         <div className="h-full flex items-center justify-center p-8 border-2 border-dashed border-slate-200 rounded-xl text-slate-400">

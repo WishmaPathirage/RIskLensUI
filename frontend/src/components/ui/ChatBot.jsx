@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Bot, User, Loader2 } from 'lucide-react';
 import api from '../../services/api';
-import ReactMarkdown from 'react-markdown'; // We don't have this installed, will just use raw text or simple formatting.
-// Wait, we don't have react-markdown. Let's just render raw text safely or split by newlines.
 
 const ChatBot = ({ variant = 'floating', context = null }) => {
     const [isOpen, setIsOpen] = useState(variant === 'embedded');
@@ -45,7 +43,7 @@ const ChatBot = ({ variant = 'floating', context = null }) => {
         }
     };
 
-    const ChatWindow = () => (
+    const chatWindowJSX = (
         <div className={`flex flex-col bg-white overflow-hidden ${variant === 'floating' ? 'fixed bottom-20 right-6 w-80 sm:w-96 h-[500px] shadow-2xl rounded-2xl border border-slate-200 z-50 animate-in slide-in-from-bottom-2' : 'w-full h-96 border border-slate-200 rounded-xl shadow-sm'}`}>
             {/* Header */}
             <div className="bg-blue-600 p-4 text-white flex justify-between items-center z-10 shadow-sm relative">
@@ -112,7 +110,7 @@ const ChatBot = ({ variant = 'floating', context = null }) => {
                 <p className="text-sm text-slate-500 mb-4">
                     The assistant already knows your scan result. Ask any specific questions about your risk score or entities!
                 </p>
-                <ChatWindow />
+                {chatWindowJSX}
             </div>
         );
     }
@@ -120,7 +118,7 @@ const ChatBot = ({ variant = 'floating', context = null }) => {
     // Floating variant
     return (
         <>
-            {isOpen && <ChatWindow />}
+            {isOpen && chatWindowJSX}
             {!isOpen && (
                 <button
                     onClick={() => setIsOpen(true)}

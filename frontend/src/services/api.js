@@ -49,6 +49,24 @@ api.interceptors.response.use(
     }
 );
 
+// LocalStorage Fallback Handlers
+const getLocalReports = () => {
+    try {
+        return JSON.parse(localStorage.getItem('risklens_reports_fallback') || '[]');
+    } catch {
+        return [];
+    }
+};
+
+const saveLocalReport = (report) => {
+    try {
+        const existing = getLocalReports();
+        localStorage.setItem('risklens_reports_fallback', JSON.stringify([...existing, report]));
+    } catch (e) {
+        console.error("Local storage save failed", e);
+    }
+};
+
 // Centralized Mock Logic connected to Firestore
 const getMockResponse = async (config) => {
     if (!config) return null;
@@ -56,56 +74,103 @@ const getMockResponse = async (config) => {
 
     // Reports List
     if (matchMock(url, '/reports') && method === 'get') {
+        let reports = [];
         const user = auth.currentUser;
-        if (!user) return { data: [], status: 200 };
-
-        try {
-            const q = query(collection(db, "reports"), where("userId", "==", user.uid));
-            const querySnapshot = await getDocs(q);
-            const reports = querySnapshot.docs.map(doc => {
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    date: data.createdAt ? new Date(data.createdAt.toMillis()).toISOString().split('T')[0] : 'Unknown Date',
-                    name: data.name || 'Scan Report',
-                    riskScore: data.result?.riskScore,
-                    status: data.result?.riskLevel
-                };
-            });
-            // Sort by newest by default string sorting on ISO date, or just keep as is
-            reports.sort((a, b) => new Date(b.date) - new Date(a.date));
-            return { data: reports, status: 200 };
-        } catch (err) {
-            return { error: true, status: 500, data: { message: "Failed to fetch reports" }};
+        
+        // Try getting Firebase data if logged in
+        if (user) {
+            try {
+                const q = query(collection(db, "reports"), where("userId", "==", user.uid));
+                const querySnapshot = await getDocs(q);
+                reports = querySnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        date: data.createdAt ? new Date(data.createdAt.toMillis()).toISOString().split('T')[0] : 'Unknown Date',
+                        name: data.name || 'Scan Report',
+                        riskScore: data.result?.riskScore,
+                        status: data.result?.riskLevel
+                    };
+                });
+            } catch (err) {
+                console.warn("Firebase fetch failed, relying on local storage fallback.");
+            }
         }
+
+        // Always fetch from LocalStorage Fallback and append
+        const localReports = getLocalReports();
+        const mappedLocal = localReports.map(data => ({
+            id: data.id,
+            date: data.date,
+            name: data.name || 'Scan Report (Local)',
+            riskScore: data.result?.riskScore,
+            status: data.result?.riskLevel
+        }));
+
+        const combinedReports = [...reports, ...mappedLocal];
+        combinedReports.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        return { data: combinedReports, status: 200 };
     }
 
 
 
     // Save Report
     if (matchMock(url, '/reports/save') && method === 'post') {
-        const user = auth.currentUser;
-        if (!user) return { error: true, status: 401, data: { message: 'Unauthorized' } };
-        
         const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+        const user = auth.currentUser;
         
         try {
-            await addDoc(collection(db, "reports"), {
-                userId: user.uid,
-                createdAt: Timestamp.now(),
-                name: 'New Scan Report',
+            if (user) {
+                // Try Firebase remote save
+                await addDoc(collection(db, "reports"), {
+                    userId: user.uid,
+                    createdAt: Timestamp.now(),
+                    name: 'New Scan Report',
+                    result: payload.result
+                });
+                return { data: { success: true }, status: 200 };
+            } else {
+                throw new Error("No active user to save to Firebase");
+            }
+        } catch (err) {
+            console.warn("Firebase save failed or skipped. Using LocalStorage fallback:", err);
+            // Engage Fallback
+            saveLocalReport({
+                id: 'local_' + new Date().getTime(),
+                userId: user ? user.uid : 'guest',
+                date: new Date().toISOString().split('T')[0],
+                name: 'New Scan Report (Fallback)',
                 result: payload.result
             });
-            return { data: { success: true }, status: 200 };
-        } catch (err) {
-            console.error(err);
-            return { error: true, status: 500, data: { message: "Failed to save report" }};
+            return { data: { success: true, localFallback: true }, status: 200 };
         }
     }
 
     // Report Detail
     if (url.match(/\/reports\/\w+/) && method === 'get') {
         const id = url.split('/').pop();
+        
+        // 1. Check LocalStorage exactly first
+        if (id.startsWith('local_')) {
+            const local = getLocalReports().find(r => r.id === id);
+            if (local) {
+                return {
+                    data: {
+                        id: local.id,
+                        date: local.date,
+                        name: local.name,
+                        riskScore: local.result?.riskScore,
+                        status: local.result?.riskLevel,
+                        details: local.result?.explanations?.join('\n') || 'No details available.',
+                        result: local.result
+                    },
+                    status: 200
+                };
+            }
+        }
+        
+        // 2. Otherwise try Firebase normally
         try {
             const docRef = doc(db, "reports", id);
             const docSnap = await getDoc(docRef);
@@ -128,7 +193,7 @@ const getMockResponse = async (config) => {
                 return { error: true, status: 404, data: { message: "Report not found" } };
             }
         } catch (err) {
-            return { error: true, status: 500, data: { message: "Failed to fetch report" }};
+            return { error: true, status: 500, data: { message: "Failed to fetch report from database" }};
         }
     }
 

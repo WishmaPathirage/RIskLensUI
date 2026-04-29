@@ -9,35 +9,52 @@ A modern, responsive frontend web application for analyzing privacy risks in AI 
 
 ## Getting Started
 
-The main application code is located in the `frontend` directory.
+To run RiskLens locally, you must run **both** the backend and the frontend in separate terminal windows.
 
-### Prerequisites
-- Node.js (v18 or higher recommended)
-- npm
+### 1. Backend Setup (FastAPI & ML Core)
+The backend expects Python 3.8+ and handles our Machine Learning pipeline.
 
-### Installation & Running
+**Note for Mac Users:** Always use `python3` instead of `python`!
 
-1. **Navigate to the frontend directory**:
-   You must move into the `frontend` folder where the React app lives.
-   ```bash
-   cd frontend
-   ```
+```bash
+# Open your first Terminal window
+cd RiskLens/backend
 
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+# (Optional but Recommended) Create a virtual environment
+python3 -m venv venv
+source venv/bin/activate
 
-3. **Start the development server**:
-   ```bash
-   npm run dev
-   ```
+# Install the Python dependencies
+pip install -r requirements.txt
 
-4. **View the setup**:
-   Open your browser and navigate to `http://localhost:5173` (or the URL shown in your terminal).
+# Start the server
+python3 -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+```
+*If everything worked, you should see `Uvicorn running on http://127.0.0.1:8000`.*
+
+> **IMPORTANT:** Because GitHub limits file sizes, the `risklens_enron_generalized` folder (250MB) is ignored. You must manually copy that model folder into the `backend/` directory from an external source before starting the Python server!
+> You also need an active `GEMINI_API_KEY` defined inside `backend/.env`.
+
+### 2. Frontend Setup (React & Vite)
+The frontend requires Node.js (v18+) and npm.
+
+```bash
+# Open a completely NEW Terminal window
+cd RiskLens/frontend
+
+# Install node dependencies
+npm install
+
+# Start the React development server
+npm run dev
+```
+
+### 3. Open the App
+Go to your browser and open `http://localhost:5173`. 
+The frontend will intelligently route all `/api/` traffic automatically to your Python server!
 
 ## Features
-- **Privacy Risk Scan**: Analyze text and files for PII and sensitivities.
-- **Dashboard**: Real-time stats and recent activity.
-- **Reports**: Detailed breakdown of risk analysis.
-- **Secure Authentication**: JWT-based login/register flow.
+- **Privacy Risk Scan:** DistilBERT model inference for PII.
+- **Explainable AI (XAI):** LIME feature scoring on inputs.
+- **AI Chatbot:** Gemini-powered interactive assistant layer.
+- **Firebase Persistence:** Live reports and history dashboard.
