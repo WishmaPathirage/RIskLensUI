@@ -73,11 +73,18 @@ const Scan = () => {
                 content: inputType === 'text' ? textContent : selectedFile.name
             });
 
-            setResult(response.data);
+            setResult({
+                ...response.data,
+                originalText: inputType === 'text' ? textContent : selectedFile.name
+            });
             
             // Auto-save the report quietly in the background
             try {
-                await api.post('/reports/save', { result: response.data });
+                const savePayload = {
+                    ...response.data,
+                    originalText: inputType === 'text' ? textContent : selectedFile.name
+                };
+                await api.post('/reports/save', { result: savePayload });
             } catch (saveErr) {
                 console.error("Auto-save failed:", saveErr);
             }
@@ -119,12 +126,28 @@ const Scan = () => {
         doc.text(`Model Confidence: ${result.confidence}%`, 20, currentY); currentY += 15;
 
         doc.setFontSize(14); doc.setFont("helvetica", "bold");
+        doc.text("ORIGINAL TEXT ANALYZED", 20, currentY); currentY += 8;
+        doc.setFontSize(11); doc.setFont("helvetica", "normal");
+        const oText = result.originalText || 'No text provided.';
+        const splitOText = doc.splitTextToSize(oText, 170);
+        doc.text(splitOText, 20, currentY);
+        currentY += (splitOText.length * 6) + 10;
+
+        // Auto-page check
+        if (currentY > 250) {
+            doc.addPage();
+            currentY = 20;
+        }
+
+        doc.setFontSize(14); doc.setFont("helvetica", "bold");
         doc.text("DETECTED ENTITIES", 20, currentY); currentY += 8;
         doc.setFontSize(11); doc.setFont("helvetica", "normal");
         const entitiesText = result.detectedEntities && result.detectedEntities.length > 0 ? result.detectedEntities.join(', ') : 'None';
         const splitEntities = doc.splitTextToSize(entitiesText, 170);
         doc.text(splitEntities, 20, currentY);
         currentY += (splitEntities.length * 6) + 10;
+
+        if (currentY > 250) { doc.addPage(); currentY = 20; }
 
         doc.setFontSize(14); doc.setFont("helvetica", "bold");
         doc.text("EXPLANATION", 20, currentY); currentY += 8;
@@ -134,6 +157,8 @@ const Scan = () => {
         doc.text(splitExp, 20, currentY);
         currentY += (splitExp.length * 6) + 10;
 
+        if (currentY > 250) { doc.addPage(); currentY = 20; }
+
         doc.setFontSize(14); doc.setFont("helvetica", "bold");
         doc.text("SUGGESTIONS", 20, currentY); currentY += 8;
         doc.setFontSize(11); doc.setFont("helvetica", "normal");
@@ -142,6 +167,7 @@ const Scan = () => {
                 const splitRec = doc.splitTextToSize(`• ${rec}`, 170);
                 doc.text(splitRec, 20, currentY);
                 currentY += (splitRec.length * 6) + 2;
+                if (currentY > 270) { doc.addPage(); currentY = 20; }
             });
         } else {
             doc.text("No specific recommendations.", 20, currentY);

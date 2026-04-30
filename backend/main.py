@@ -79,21 +79,7 @@ async def chat_endpoint(request: ChatRequest):
     if not os.getenv("GEMINI_API_KEY"):
         return {"response": "Error: Gemini API key not configured on the server."}
     
-    # Domain-Specific Guardrail Filter
-    ALLOWED_KEYWORDS = [
-        "risklens", "privacy", "leak", "no_leak", "sensitive", "threat"
-        "email", "phone", "nic", "id", "risk", "score", "scam", "identity" "bank card"
-        "probability", "explanation", "xai", "detected", "card number"
-        "entity", "scan", "data", "personal information",
-        "hi", "hello", "hey" # Include basic greetings so it doesn't instantly block hello
-    ]
-    
-    # If the user doesn't use a keyword, reject before it even hits the LLM
-    user_msg_lower = request.message.lower()
-    has_keyword = any(keyword in user_msg_lower for keyword in ALLOWED_KEYWORDS)
-    
-    if not has_keyword:
-        return {"response": "I can only answer questions related to the RiskLens privacy risk analysis system."}
+    # The system prompt handles guardrails natively now.
     
     # Strict System Prompt
     sys_prompt = "You are the RiskLens Assistant. You only answer questions related to the RiskLens project, privacy leak detection, detected sensitive entities, risk scores, explainable AI outputs, and safe privacy awareness. Do not answer unrelated questions such as general knowledge, coding unrelated to RiskLens, entertainment, personal advice, politics, or academic topics outside this project. If the user asks an unrelated question, politely respond: 'I can only answer questions related to the RiskLens privacy risk analysis system.' Keep answers short, simple, and user-friendly."

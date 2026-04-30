@@ -87,7 +87,9 @@ const getMockResponse = async (config) => {
                     return {
                         id: doc.id,
                         date: data.createdAt ? new Date(data.createdAt.toMillis()).toISOString().split('T')[0] : 'Unknown Date',
+                        timestamp: data.createdAt ? data.createdAt.toMillis() : 0,
                         name: data.name || 'Scan Report',
+                        originalText: data.result?.originalText,
                         riskScore: data.result?.riskScore,
                         status: data.result?.riskLevel
                     };
@@ -102,13 +104,15 @@ const getMockResponse = async (config) => {
         const mappedLocal = localReports.map(data => ({
             id: data.id,
             date: data.date,
+            timestamp: data.timestamp || 0,
             name: data.name || 'Scan Report (Local)',
+            originalText: data.result?.originalText,
             riskScore: data.result?.riskScore,
             status: data.result?.riskLevel
         }));
 
         const combinedReports = [...reports, ...mappedLocal];
-        combinedReports.sort((a, b) => new Date(b.date) - new Date(a.date));
+        combinedReports.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
         
         return { data: combinedReports, status: 200 };
     }
@@ -140,6 +144,7 @@ const getMockResponse = async (config) => {
                 id: 'local_' + new Date().getTime(),
                 userId: user ? user.uid : 'guest',
                 date: new Date().toISOString().split('T')[0],
+                timestamp: new Date().getTime(),
                 name: 'New Scan Report (Fallback)',
                 result: payload.result
             });
@@ -159,6 +164,7 @@ const getMockResponse = async (config) => {
                     data: {
                         id: local.id,
                         date: local.date,
+                        timestamp: local.timestamp,
                         name: local.name,
                         riskScore: local.result?.riskScore,
                         status: local.result?.riskLevel,
@@ -181,6 +187,7 @@ const getMockResponse = async (config) => {
                     data: {
                         id: docSnap.id,
                         date: data.createdAt ? new Date(data.createdAt.toMillis()).toISOString().split('T')[0] : 'Unknown Date',
+                        timestamp: data.createdAt ? data.createdAt.toMillis() : 0,
                         name: data.name || 'Scan Report',
                         riskScore: data.result?.riskScore,
                         status: data.result?.riskLevel,

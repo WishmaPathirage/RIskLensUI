@@ -92,6 +92,7 @@ const Reports = () => {
                         <thead className="bg-slate-50">
                             <tr>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Report Name</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden md:table-cell">Original Text</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date Created</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Risk Score</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
@@ -121,6 +122,11 @@ const Reports = () => {
                                                     <div className="text-sm font-medium text-slate-900">{report.name}</div>
                                                     <div className="text-xs text-slate-500">ID: #{report.id}</div>
                                                 </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 hidden md:table-cell max-w-[200px] truncate">
+                                            <div className="text-sm text-slate-500" title={report.originalText}>
+                                                {report.originalText ? (report.originalText.length > 40 ? report.originalText.substring(0, 40) + '...' : report.originalText) : 'No text available'}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">

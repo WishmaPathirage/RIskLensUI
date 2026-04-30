@@ -122,12 +122,12 @@ def generate_recommendations(prediction, entities, text):
         recommendations.append("No critical privacy risk detected. Review the text once before sharing.")
         return recommendations
 
-    if "PHONE" in entities: recommendations.append("Mask or remove the phone number before sharing.")
-    if "EMAIL" in entities: recommendations.append("Replace the personal email address with a placeholder or generic contact.")
-    if "BANK_INFO" in entities: recommendations.append("Avoid sharing banking or account-related information in plain text.")
-    if "ID_INFO" in entities: recommendations.append("Remove or partially mask national ID, NIC, passport, or similar identifiers.")
-    if "ADDRESS" in entities: recommendations.append("Avoid sharing exact address details unless absolutely necessary.")
-    if "CARD_NUMBER" in entities: recommendations.append("Do not share card-like numbers in unprotected text.")
+    if "Phone Number" in entities: recommendations.append("Mask or remove the phone number before sharing.")
+    if "Email Address" in entities: recommendations.append("Replace the personal email address with a placeholder or generic contact.")
+    if "Bank Information" in entities: recommendations.append("Avoid sharing banking or account-related information in plain text.")
+    if "ID Information" in entities: recommendations.append("Remove or partially mask national ID, NIC, passport, or similar identifiers.")
+    if "Address" in entities: recommendations.append("Avoid sharing exact address details unless absolutely necessary.")
+    if "Card Number" in entities: recommendations.append("Do not share card-like numbers in unprotected text.")
 
     if not entities:
         recommendations.append("Review the text and remove any personal or sensitive information before sharing.")

@@ -93,30 +93,39 @@ const ReportDetail = () => {
                         <div className="md:col-span-2 space-y-8">
                             <div>
                                 <h3 className="text-lg font-semibold text-slate-900 border-b border-slate-200 pb-2 mb-4">Risk Analysis Summary</h3>
-                                <p className="text-slate-600 leading-relaxed">
-                                    {report.details} This is a simulated detailed report content. The analysis engine detected patterns consistent with privacy risks.
+                                <p className="text-slate-600 leading-relaxed mb-4">
+                                    The analysis engine scanned the provided text and detected patterns consistent with the stated privacy risk.
                                     Review the breakdown below for specific actionable insights.
                                 </p>
                             </div>
 
                             <div>
-                                <h3 className="text-lg font-semibold text-slate-900 border-b border-slate-200 pb-2 mb-4">Detected Vulnerabilities</h3>
-                                <ul className="space-y-3">
-                                    <li className="bg-red-50 p-3 rounded-lg flex items-start">
-                                        <ShieldAlert className="h-5 w-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" />
-                                        <div>
-                                            <p className="text-sm font-medium text-red-800">PII Exposure</p>
-                                            <p className="text-xs text-red-600 mt-1">Found likely credit card numbers or social security patterns in the dataset.</p>
-                                        </div>
-                                    </li>
-                                    <li className="bg-yellow-50 p-3 rounded-lg flex items-start">
-                                        <ShieldAlert className="h-5 w-5 text-yellow-500 mt-0.5 mr-3 flex-shrink-0" />
-                                        <div>
-                                            <p className="text-sm font-medium text-yellow-800">Indirect Identifiers</p>
-                                            <p className="text-xs text-yellow-600 mt-1">Combination of zip code and birth date may lead to re-identification.</p>
-                                        </div>
-                                    </li>
-                                </ul>
+                                <h3 className="text-lg font-semibold text-slate-900 border-b border-slate-200 pb-2 mb-4">Original Text Analyzed</h3>
+                                <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 overflow-x-auto">
+                                    <p className="text-slate-700 font-mono text-sm whitespace-pre-wrap">{report.result?.originalText || "No original text available."}</p>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 className="text-lg font-semibold text-slate-900 border-b border-slate-200 pb-2 mb-4">Detected Entities</h3>
+                                {report.result?.detectedEntities?.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {report.result.detectedEntities.map((ent, idx) => (
+                                            <span key={idx} className="px-3 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full border border-red-200 shadow-sm">
+                                                {ent}
+                                            </span>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-slate-500">No specific entities detected.</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <h3 className="text-lg font-semibold text-slate-900 border-b border-slate-200 pb-2 mb-4">Explanation Details</h3>
+                                <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                    <p className="text-slate-700 text-sm leading-relaxed">{report.result?.explanation || "No detailed model explanation provided."}</p>
+                                </div>
                             </div>
                         </div>
 
@@ -143,13 +152,19 @@ const ReportDetail = () => {
                             </div>
 
                             <div className="bg-slate-50 rounded-xl p-5 border border-slate-100">
-                                <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-widest mb-4">Recommendation</h4>
-                                <div className="flex items-start">
-                                    <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
-                                    <p className="text-sm text-slate-700">
-                                        Requires immediate attention. Anonymize PII before proceeding with model training.
-                                    </p>
-                                </div>
+                                <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-widest mb-4">Suggestions</h4>
+                                {report.result?.recommendations?.length > 0 ? (
+                                    <ul className="space-y-3">
+                                        {report.result.recommendations.map((rec, idx) => (
+                                            <li key={idx} className="flex items-start">
+                                                <CheckCircle className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
+                                                <p className="text-sm text-slate-700 leading-snug">{rec}</p>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="text-sm text-slate-500">No specific suggestions available.</p>
+                                )}
                             </div>
                         </div>
                     </div>
