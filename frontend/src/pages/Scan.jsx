@@ -35,7 +35,7 @@ const Scan = () => {
             setLoadingMessageIdx(0);
             interval = setInterval(() => {
                 setLoadingMessageIdx(prev => Math.min(prev + 1, loadingMessages.length - 1));
-            }, 4000);
+            }, 2000);
         }
         return () => clearInterval(interval);
     }, [isAnalyzing]);
