@@ -300,9 +300,8 @@ const Scan = () => {
                                                 <h4 className="font-semibold text-sm text-slate-900 mb-3">Top Important Words</h4>
                                                 <ul className="text-sm text-slate-600 space-y-1.5">
                                                     {result.topImportantWords.slice(0, 6).map((item, idx) => (
-                                                        <li key={idx} className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-md border border-slate-200 shadow-sm">
+                                                        <li key={idx} className="flex items-center bg-slate-50 px-3 py-2 rounded-md border border-slate-200 shadow-sm">
                                                             <span className="font-medium text-slate-700">{item[0]}</span>
-                                                            <span className="font-mono text-xs text-slate-500">{item[1].toFixed(4)}</span>
                                                         </li>
                                                     ))}
                                                 </ul>
@@ -315,11 +314,8 @@ const Scan = () => {
                                                 <h4 className="font-semibold text-sm text-slate-900 mb-3">LIME Impact Sub-words</h4>
                                                 <ul className="text-sm text-slate-600 space-y-1.5">
                                                     {result.limeFeatures.slice(0, 6).map((item, idx) => (
-                                                        <li key={idx} className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-md border border-slate-200 shadow-sm">
+                                                        <li key={idx} className="flex items-center bg-slate-50 px-3 py-2 rounded-md border border-slate-200 shadow-sm">
                                                             <span className="font-medium text-slate-700">{item[0]}</span>
-                                                            <span className={`font-mono text-xs font-bold ${item[1] > 0 ? 'text-red-500' : 'text-green-600'}`}>
-                                                                {item[1] > 0 ? '+' : ''}{item[1].toFixed(4)}
-                                                            </span>
                                                         </li>
                                                     ))}
                                                 </ul>
